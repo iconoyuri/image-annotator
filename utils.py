@@ -62,7 +62,7 @@ def convert_image_to_csv(image_path, save_folder):
 
 def crop_all_files():
     try:
-        os.mkdir(cropped_images_directory)
+        os.mkdir(treated_images_directory)
     except OSError as error:
         ...
 
@@ -91,11 +91,11 @@ def crop_all_files():
             sub_ref["label"] = annotation["label"]
             sub_ref["sub_img_name"] = f"SUBIMG-{i}{os.path.splitext(downloaded_image_name)[1]}"
             try:
-                os.mkdir(os.path.join(cropped_images_directory,annotation["label"]))
+                os.mkdir(os.path.join(treated_images_directory,annotation["label"]))
             except OSError as error:
                 ...
 
-            location = os.path.join(cropped_images_directory, annotation["label"], sub_ref["sub_img_name"])
+            location = os.path.join(treated_images_directory, annotation["label"], sub_ref["sub_img_name"])
             
             img = crop_image(downloaded_image_name, annotation["coordinates"])
             img = fill_image(img)
@@ -145,11 +145,6 @@ def fill_image(cv2_img):
     return cv2_img
         
 
-def save_csv_image(location, cv2_img):    
-    try:
-        os.mkdir(cropped_images_directory)
-    except OSError as error:
-        ...
-        
+def save_csv_image(location, cv2_img): 
     cv2.imwrite(location, cv2_img)
     print("saved image ", location)
