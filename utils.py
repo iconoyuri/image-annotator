@@ -89,7 +89,6 @@ def crop_all_files():
         for annotation in metadata["annotations"]:
             sub_ref = {}
             sub_ref["label"] = annotation["label"]
-            # print("\n\n !!!!!!Extension", os.path.basename(downloaded_image_name), downloaded_image_name)
             sub_ref["sub_img_name"] = f"SUBIMG-{i}{os.path.splitext(downloaded_image_name)[1]}"
             try:
                 os.mkdir(os.path.join(cropped_images_directory,annotation["label"]))
@@ -134,9 +133,7 @@ def resize_images():
         if not os.path.splitext(image)[1] in SUPPORTED_FORMATS :
             continue
 
-        img = cv2.imread(image)
-        print(img.shape)
-        
+        img = cv2.imread(image)        
         width, height, dims = img.shape
         
         if width > height:
@@ -147,6 +144,7 @@ def resize_images():
         img = cv2.resize(img, None, fx=ratio, fy=ratio)
 
         width, height, dims = img.shape
+
         filler = None
         if width > height:
             filler = [[[255]*3]*(256 - height)] * 256
@@ -154,32 +152,16 @@ def resize_images():
         else:
             filler = [[[255]*3] * 256] * (256 - width)
             img = np.append(img, filler, axis=0)
-        print("filler " , len(filler))
+            
+        save_csv_image(image, img)
 
-    ...
-
-def img_to_csv():
+def save_csv_image(image, cv2_img):    
     try:
         os.mkdir(img_csv_file_directory)
     except OSError as error:
         ...
-    images_list = list_all_files(cropped_images_directory)
-    for image in images_list:
-        if not os.path.splitext(image)[1] in SUPPORTED_FORMATS :
-            continue
-
-        img = Image.open(image)
-        
-        arr = np.asarray(img)
-        
-        lst = []
-        for row in arr:
-            tmp = []
-            for col in row:
-                tmp.append(str(col))
-            lst.append(tmp)
-        location = os.path.splitext(os.path.basename(image))[0]
-        location = f"{os.path.join(img_csv_file_directory, location)}.csv"
-        with open( location, 'w') as f:
-            for row in lst:
-                f.write(','.join(row) + '\n')
+    location = os.path.splitext(os.path.basename(image))[0]
+    location = f"{os.path.join(img_csv_file_directory, location)}.jpg"
+    
+    cv2.imwrite(location, cv2_img)
+    print("saved image ", location)
