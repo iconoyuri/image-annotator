@@ -67,7 +67,7 @@ def crop_all_files():
         ...
 
     annotation_files = list_all_files(annotation_files_directory)
-    # print(annotation_files)
+    
     refs = []
     i = 0
     for file in annotation_files:
@@ -94,8 +94,12 @@ def crop_all_files():
                 os.mkdir(os.path.join(cropped_images_directory,annotation["label"]))
             except OSError as error:
                 ...
-            image = crop_image(downloaded_image_name, annotation["coordinates"])
-            image.save(os.path.join(cropped_images_directory,annotation["label"], sub_ref["sub_img_name"]))
+
+            location = os.path.join(cropped_images_directory, annotation["label"], sub_ref["sub_img_name"])
+            
+            img = crop_image(downloaded_image_name, annotation["coordinates"])
+            img = fill_image(img)
+            save_csv_image(location, img)
 
             ref["sub_images"].append(sub_ref)
             i += 1
@@ -109,59 +113,43 @@ def crop_all_files():
 
 def crop_image(image_name, coordinates):
     image_path = os.path.join(os.getcwd(), downloaded_files_directory, image_name)
-    img = Image.open(image_path)
-    width = coordinates["width"]
-    height = coordinates["height"]
-    left = coordinates["x"] - width / 2
-    right = coordinates["x"] + width / 2
-    top = coordinates["y"] - height / 2
-    bottom = coordinates["y"] + height / 2
-    img = img.crop((left,top,right,bottom))
+    img = cv2.imread(image_path)
+    width = int(coordinates["width"])
+    height = int(coordinates["height"])
+    left = int(coordinates["x"] - width / 2)
+    top = int(coordinates["y"] - height / 2)
 
-    # if width > height:
-    #     ratio = TRAIN_IMAGES_DIM / width
-    # else:
-    #     ratio = TRAIN_IMAGES_DIM / height
-
-    # img = cv2.resize(img, None, ratio, ratio)
+    img = img[top:top+height, left:left+width]
 
     return img
 
-def resize_images():
-    images_list = list_all_files(cropped_images_directory)
-    for image in images_list:
-        if not os.path.splitext(image)[1] in SUPPORTED_FORMATS :
-            continue
+def fill_image(cv2_img):     
+    width, height, dims = cv2_img.shape
+    
+    if width > height:
+        ratio = TRAIN_IMAGES_DIM / width
+    else:
+        ratio = TRAIN_IMAGES_DIM / height
 
-        img = cv2.imread(image)        
-        width, height, dims = img.shape
+    cv2_img = cv2.resize(cv2_img, None, fx=ratio, fy=ratio)
+
+    width, height, dims = cv2_img.shape
+
+    filler = None
+    if width > height:
+        filler = [[[255]*3]*(256 - height)] * 256
+        cv2_img = np.append(cv2_img, filler, axis=1)
+    else:
+        filler = [[[255]*3] * 256] * (256 - width)
+        cv2_img = np.append(cv2_img, filler, axis=0)
+    return cv2_img
         
-        if width > height:
-            ratio = TRAIN_IMAGES_DIM / width
-        else:
-            ratio = TRAIN_IMAGES_DIM / height
 
-        img = cv2.resize(img, None, fx=ratio, fy=ratio)
-
-        width, height, dims = img.shape
-
-        filler = None
-        if width > height:
-            filler = [[[255]*3]*(256 - height)] * 256
-            img = np.append(img, filler, axis=1)
-        else:
-            filler = [[[255]*3] * 256] * (256 - width)
-            img = np.append(img, filler, axis=0)
-            
-        save_csv_image(image, img)
-
-def save_csv_image(image, cv2_img):    
+def save_csv_image(location, cv2_img):    
     try:
-        os.mkdir(img_csv_file_directory)
+        os.mkdir(cropped_images_directory)
     except OSError as error:
         ...
-    location = os.path.splitext(os.path.basename(image))[0]
-    location = f"{os.path.join(img_csv_file_directory, location)}.jpg"
-    
+        
     cv2.imwrite(location, cv2_img)
     print("saved image ", location)
