@@ -75,7 +75,11 @@ def crop_all_files():
         if not file.endswith(".json"):
             continue
 
-        metadata = load_metadata(file)[0]
+        try:
+            metadata = load_metadata(file)[0]
+        except UnicodeDecodeError:
+            continue
+
         downloaded_image_name = metadata["image"]
 
         if not os.path.splitext(downloaded_image_name)[1] in SUPPORTED_FORMATS :
@@ -88,16 +92,18 @@ def crop_all_files():
 
         for annotation in metadata["annotations"]:
             sub_ref = {}
-            sub_ref["label"] = annotation["label"]
+            sub_ref["label"] = annotation["label"].lower()
             sub_ref["sub_img_name"] = f"SUBIMG-{i}{os.path.splitext(downloaded_image_name)[1]}"
             try:
-                os.mkdir(os.path.join(treated_images_directory,annotation["label"]))
+                os.mkdir(os.path.join(treated_images_directory,sub_ref["label"]))
             except OSError as error:
                 ...
 
-            location = os.path.join(treated_images_directory, annotation["label"], sub_ref["sub_img_name"])
+            location = os.path.join(treated_images_directory, sub_ref["label"], sub_ref["sub_img_name"])
             
             img = crop_image(downloaded_image_name, annotation["coordinates"])
+            if img is None:
+                continue
             img = fill_image(img)
             save_csv_image(location, img)
 
@@ -114,11 +120,13 @@ def crop_all_files():
 def crop_image(image_name, coordinates):
     image_path = os.path.join(os.getcwd(), downloaded_files_directory, image_name)
     img = cv2.imread(image_path)
+    if img is None:
+        return None
     width = int(coordinates["width"])
     height = int(coordinates["height"])
     left = int(coordinates["x"] - width / 2)
     top = int(coordinates["y"] - height / 2)
-
+    
     img = img[top:top+height, left:left+width]
 
     return img
@@ -137,10 +145,10 @@ def fill_image(cv2_img):
 
     filler = None
     if width > height:
-        filler = [[[255]*3]*(256 - height)] * 256
+        filler = [[[255]*3]*(TRAIN_IMAGES_DIM - height)] * TRAIN_IMAGES_DIM
         cv2_img = np.append(cv2_img, filler, axis=1)
     else:
-        filler = [[[255]*3] * 256] * (256 - width)
+        filler = [[[255]*3] * TRAIN_IMAGES_DIM] * (TRAIN_IMAGES_DIM - width)
         cv2_img = np.append(cv2_img, filler, axis=0)
     return cv2_img
         
